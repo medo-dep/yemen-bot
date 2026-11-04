@@ -211,4 +211,207 @@ GRADES_DATA = {
             "الأحياء - الكتاب كاملاً",
             "التاريخ - الكتاب كاملاً",
             "الجغرافيا - الكتاب كاملاً",
-            "الم
+            "المجتمع اليمني - الكتاب كاملاً",
+            "اللغة الإنجليزية (Course Book)",
+            "اللغة الإنجليزية (Work Book)",
+        ]
+    },
+    "grade11": {
+        "title": "الصف الثاني الثانوي",
+        "hashtag": "#الثاني_الثانوي",
+        "books": [
+            "التربية الإسلامية (فقه وحديث)",
+            "التربية الإسلامية (سيرة وعقيدة)",
+            "اللغة العربية (نحو وصرف)",
+            "اللغة العربية (أدب ونصوص)",
+            "اللغة العربية (قراءة ونقد)",
+            "الرياضيات (علمي)",
+            "الرياضيات (أدبي)",
+            "الفيزياء (علمي)",
+            "الكيمياء (علمي)",
+            "الأحياء (علمي)",
+            "التاريخ (أدبي)",
+            "الجغرافيا (أدبي)",
+            "اللغة الإنجليزية (Course Book)",
+            "اللغة الإنجليزية (Work Book)",
+        ]
+    },
+    "grade12": {
+        "title": "الصف الثالث الثانوي",
+        "hashtag": "#الثالث_الثانوي",
+        "books": [
+            "التربية الإسلامية (فقه وحديث) - الجزء الأول",
+            "التربية الإسلامية (فقه وحديث) - الجزء الثاني",
+            "التربية الإسلامية (القرآن وعلومه)",
+            "اللغة العربية (أدب ونصوص ونقد)",
+            "اللغة العربية (قراءة وتعبير)",
+            "اللغة العربية (نحو وصرف)",
+            "الرياضيات (علمي) - التفاضل والتكامل والجبر",
+            "الرياضيات (أدبي)",
+            "الفيزياء (علمي)",
+            "الكيمياء (علمي)",
+            "الأحياء (علمي)",
+            "التاريخ (أدبي)",
+            "الجغرافيا (أدبي)",
+            "مبادئ الفلسفة (أدبي)",
+            "اللغة الإنجليزية (Course Book)",
+            "اللغة الإنجليزية (Work Book)",
+        ]
+    }
+}
+
+CLOSING_MESSAGE = (
+    "\n\n📚 **نتمنى لكم مذاكرة ممتعة ودوام التوفيق والنجاح.**\n"
+    "🇾🇪 **اجتهدوا في طلب العلم، فأنتم أمل المستقبل.**"
+)
+
+# ==========================================
+# 4. لوحات المفاتيح والأزرار
+# ==========================================
+def get_grades_keyboard():
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        InlineKeyboardButton(f"📁 {info['title']}", callback_data=f"g_{key}")
+        for key, info in GRADES_DATA.items()
+    ]
+    markup.add(*buttons)
+    return markup
+
+def get_books_keyboard(grade_key):
+    info = GRADES_DATA[grade_key]
+    markup = InlineKeyboardMarkup(row_width=1)
+    
+    for idx, book_title in enumerate(info["books"]):
+        display_title = book_title if len(book_title) <= 35 else book_title[:32] + "..."
+        markup.add(InlineKeyboardButton(f"📖 {display_title}", callback_data=f"b_{grade_key}_{idx}"))
+    
+    markup.add(InlineKeyboardButton(f"📥 فتح مجلد {info['title']} بالدرايف", url=DRIVE_FOLDER_URL))
+    markup.add(InlineKeyboardButton("🔙 العودة لقائمة الصفوف", callback_data="back_main"))
+    return markup
+
+# ==========================================
+# 5. معالجات الأوامر في المحادثة الخاصة
+# ==========================================
+@bot.message_handler(commands=["start"])
+def handle_start(message):
+    welcome_text = (
+        "مرحباً بك في **بوت المناهج الدراسية اليمنية كاملة** 🇾🇪📚\n\n"
+        "اختر المرحلة الدراسية لعرض قائمة المواد والكتب واختيار الكتاب المطلوب:"
+    )
+    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=get_grades_keyboard())
+
+@bot.message_handler(commands=[f"grade{i}" for i in range(1, 13)])
+def handle_direct_grade_command(message):
+    cmd = message.text.split()[0].replace("/", "").split("@")[0]
+    if cmd in GRADES_DATA:
+        info = GRADES_DATA[cmd]
+        bot.send_message(
+            message.chat.id,
+            f"📂 **كتب ومقررات {info['title']}:**\nاختر الكتاب المطلوب:",
+            parse_mode="Markdown",
+            reply_markup=get_books_keyboard(cmd)
+        )
+
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callbacks(call):
+    data = call.data
+
+    if data == "back_main":
+        bot.edit_message_text(
+            "مرحباً بك في **بوت المناهج الدراسية اليمنية كاملة** 🇾🇪📚\n\n"
+            "اختر المرحلة الدراسية لعرض قائمة المواد والكتب:",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="Markdown",
+            reply_markup=get_grades_keyboard()
+        )
+        bot.answer_callback_query(call.id)
+        return
+
+    if data.startswith("g_"):
+        grade_key = data.replace("g_", "")
+        if grade_key in GRADES_DATA:
+            info = GRADES_DATA[grade_key]
+            text = (
+                f"📂 **كتب ومقررات {info['title']}**\n"
+                f"📊 عدد الكتب المتوفرة: {len(info['books'])} كتاباً\n\n"
+                f"اختر الكتاب المطلوب لتحميله مباشرة:"
+            )
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode="Markdown",
+                reply_markup=get_books_keyboard(grade_key)
+            )
+            bot.answer_callback_query(call.id)
+            return
+
+    if data.startswith("b_"):
+        parts = data.split("_")
+        if len(parts) >= 3:
+            grade_key = parts[1]
+            book_idx = int(parts[2])
+            info = GRADES_DATA.get(grade_key)
+            if info and book_idx < len(info["books"]):
+                book_name = info["books"][book_idx]
+                bot.answer_callback_query(call.id, f"جاري تجهيز {book_name}...")
+                
+                download_markup = InlineKeyboardMarkup(row_width=1)
+                download_markup.add(InlineKeyboardButton("📥 اضغط هنا للتحميل المباشر (PDF)", url=DRIVE_FOLDER_URL))
+                
+                msg_text = (
+                    f"📘 **كتاب: {book_name}**\n"
+                    f"📂 المرحلة: {info['title']}\n"
+                    f"🏷 {info['hashtag']} | #المناهج_اليمنية\n\n"
+                    f"اضغط على الزر أدناه لفتح وتحميل الكتاب بصيغة PDF فوراً من درايف:"
+                    f"{CLOSING_MESSAGE}"
+                )
+                bot.send_message(call.message.chat.id, msg_text, parse_mode="Markdown", reply_markup=download_markup)
+            return
+
+# ==========================================
+# 6. معالجات منشورات ورسائل القناة
+# ==========================================
+@bot.channel_post_handler(func=lambda message: True)
+def handle_channel_post(message):
+    chat_id = message.chat.id
+    text = (message.text or "").strip()
+    print(f"📢 منشور جديد في القناة: {text}")
+
+    if text in ["رفع", "فرز", "/upload_all", "/start"]:
+        bot.send_message(
+            chat_id,
+            "🚀 **جاري نشر وفهرسة المناهج الدراسية اليمنية في القناة...**",
+            parse_mode="Markdown"
+        )
+        for grade_key, info in GRADES_DATA.items():
+            books_list = "\n".join([f"• 📖 {b}" for b in info["books"]])
+            msg_text = (
+                f"══════════════════════\n"
+                f"📚 **{info['title']}**\n"
+                f"══════════════════════\n\n"
+                f"📋 **قائمة المقررات والكتب:**\n"
+                f"{books_list}\n\n"
+                f"🏷 {info['hashtag']} | #المناهج_اليمنية"
+                f"{CLOSING_MESSAGE}"
+            )
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton(f"📥 فتح وتحميل كتب {info['title']}", url=DRIVE_FOLDER_URL))
+            bot.send_message(chat_id, msg_text, parse_mode="Markdown", reply_markup=markup)
+            time.sleep(1.5)
+
+        bot.send_message(
+            chat_id,
+            "🎉 **تم الانتهاء من نشر وفهرسة جميع المناهج اليمنية في القناة بنجاح!**",
+            parse_mode="Markdown"
+        )
+
+# ==========================================
+# 7. تشغيل الخادم والبوت
+# ==========================================
+if __name__ == "__main__":
+    print("🚀 جاري تشغيل خادم الويب على المنفذ", PORT)
+    threading.Thread(target=run_web, daemon=True).start()
+    print("🤖 البوت يعمل الآن بنجاح في الخلفية...")
+    bot.infinity_polling(timeout=30, long_polling_timeout=30)
